@@ -1,0 +1,75 @@
+---
+title: "s2_activism_scale_reduction"
+author: "Finnerty, Samuel"
+date: "21/01/2022"
+output: html_document
+---
+```{r}
+library(tidyverse)
+library(psych)
+setwd("~/Research/Research_projects/2022_s3_activism_science_survey/r_docs")
+
+```
+
+```{r}
+data_aos_items <- readRDS("../data/data_aos_items.rds")
+
+```
+
+```{r}
+alpha(data_aos_items)
+
+```
+
+Running the reliability check we see in the output that removing any of the 33 items has no bearing on the overall reliability of the scale. Alternative means of reducing the number of items in the scale, while preserving the validity of the construct are required. 
+
+If we look to the original moral expansiveness work we see they take a theory + stats based approach to reducing their scale down:
+
+"As the original MES
+categories do not represent statistically unique sub-dimensions, our goal was simply to identify
+a single exemplar entity from each of the pre-existing categories. In doing so, we intended to
+capture the broad spread of human and non-human entities that made up the full version of
+the MES. Given that factor loadings reflect the correlation between a variable and the underlying factor [9], responses to the complete list of 30 MES entities were gathered and these loadings were used to identity the 10 category exemplars" - (Crimston et al., 2018). 
+
+
+
+# Method One: Exploratory Factor Analysis followed by Confirmatory Factor analysis
+
+We will use an exploratory factor analysis to examine if there are underlying factors within the activism frequency data e.g., kinds of actions grouped together such as those that risk arrest compared with those that are low effort. 
+
+If we use exploratory factor analysis we can identify underlying factors. Then we can use confirmatory factor analysis, in the lavaan package, to confirm if the reduced set of variables perform as well as the total number of variables
+
+https://link.springer.com/article/10.1007/s11192-017-2283-4
+
+
+
+```{r}
+
+
+```
+# Method Two: Decide on 10 - 15 underlying behaviours and pick exemplars of each factor
+
+# Method Two: Area under the receiver operator curve method
+(AUC ROC) method.
+
+https://link.springer.com/article/10.1007/s11192-017-2283-4
+
+```{r}
+library(caTools)
+y = data_aos_items
+
+```
+# Method Three: Graded Response Model
+Usually conducted to establish the usefulness of test items (Ayala et al., 1992).
+
+```{r}
+library(ltm)
+fit <- grm(data_aos_items, constrained = TRUE)
+grm(data_aos_items, constrained = TRUE)
+
+fit2 <- grm(data_aos_items)
+grm(data_aos_items)
+
+anova(fit, fit2)
+
+```
