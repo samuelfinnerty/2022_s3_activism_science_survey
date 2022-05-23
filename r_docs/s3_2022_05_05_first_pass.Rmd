@@ -1,0 +1,878 @@
+---
+title: "s3_2022_may_05"
+author: "Samuel Finnerty"
+date: "05/05/2022"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+library(tidyverse)
+library(dplyr)
+library("pwr")  
+library(corrplot)
+library("Hmisc")
+library(car)
+library(ggplot2)
+library(psych)
+```
+# 
+
+```{r}
+
+data <- read_csv("C:/Users/samue/OneDrive - Lancaster University/Research/Research_projects/doctoral_projects/s3_activist_survey/s3_activist_survey_analysis/data/s3_data_may_19_1617.csv")
+```
+# Data wrangling 
+
+## Change text answers to numbers
+
+noticed that qualtrics can sometimes score variables incorrectly. It is better to use the text answers and then recode accordingly. 
+
+### Activism frequency scale 
+```{r}
+
+
+data <- data %>%
+  mutate_at(
+    vars(starts_with('aos_l')),
+    funs(case_when(
+      . == "0. Never do this" ~ 0,
+      . == "1. Do this rarely" ~ 1,
+      . == "2. Do this sometimes" ~ 2,
+      . == "3. Do this often" ~ 3
+    )))
+
+
+data <- data %>%
+  mutate_at(
+    vars(starts_with('aos_h')),
+    funs(case_when(
+      . == "0. Never do this" ~ 0,
+      . == "1. Do this rarely" ~ 1,
+      . == "2. Do this sometimes" ~ 2,
+      . == "3. Do this often" ~ 3
+    )))
+
+```
+
+
+
+### Scientist identity scale
+
+First let's do the forward scored variables
+```{r}
+
+data <- data %>%
+  mutate_at(
+    vars(one_of('i_s1', 'i_s2', 'i_s5', 'i_s7')),
+    funs(case_when(
+      . == "Strongly Disagree" ~ 1,
+      . == "Disagree" ~ 2,
+      . == "Somewhat Disagree" ~ 3,
+      . == "Neither Agree nor Disagree" ~ 4,
+      . == "Somewhat Agree" ~ 5,
+      . == "Agree" ~ 6,
+      . == "Strongly Agree" ~ 7
+    )))
+
+
+```
+
+Now the reverse scored variables 
+```{r}
+data <- data %>%
+  mutate_at(
+    vars(one_of('i_s3', 'i_s4', 'i_s6', 'i_s8')),
+    funs(case_when(
+      . == "Strongly Disagree" ~ 7,
+      . == "Disagree" ~ 6,
+      . == "Somewhat Disagree" ~ 5,
+      . == "Neither Agree nor Disagree" ~ 4,
+      . == "Somewhat Agree" ~ 3,
+      . == "Agree" ~ 2,
+      . == "Strongly Agree" ~ 1
+    )))
+    
+```
+### Activist  identity scale
+
+First let's dop the forward scored variables
+```{r}
+
+data <- data %>%
+  mutate_at(
+    vars(one_of('i_a1', 'i_a2', 'i_a5', 'i_a7')),
+    funs(case_when(
+      . == "Strongly Disagree" ~ 1,
+      . == "Disagree" ~ 2,
+      . == "Somewhat Disagree" ~ 3,
+      . == "Neither Agree nor Disagree" ~ 4,
+      . == "Somewhat Agree" ~ 5,
+      . == "Agree" ~ 6,
+      . == "Strongly Agree" ~ 7
+    )))
+
+
+```
+
+Now the reverse scored variables 
+```{r}
+data <- data %>%
+  mutate_at(
+    vars(one_of('i_a3', 'i_a4', 'i_a6', 'i_a8')),
+    funs(case_when(
+      . == "Strongly Disagree" ~ 7,
+      . == "Disagree" ~ 6,
+      . == "Somewhat Disagree" ~ 5,
+      . == "Neither Agree nor Disagree" ~ 4,
+      . == "Somewhat Agree" ~ 3,
+      . == "Agree" ~ 2,
+      . == "Strongly Agree" ~ 1
+    )))
+    
+```
+
+### Other measures 
+
+#### measures with agree and disagree
+```{r}
+data <- data %>%
+  mutate_at(
+    vars(one_of('objectivity', 'impartiality', 'reputation_bias', 'compatibility', 'reputation_compat', 'duty', 'impact_self', 'impact_close', 'sol_beh',
+                'sol_pol', 'sol_tech'
+                )),
+    funs(case_when(
+      . == "1 - Strongly disagree" ~ 1,
+      . == "2 - Disagree" ~ 2,
+      . == "3 - Neither agree nor disagree" ~ 3,
+      . == "4 - Agree" ~ 4,
+      . == "5 - Strongly agree" ~ 5
+    )))
+
+## Reverse score tech alone will not fix it as this goes against tech alone
+## can then combine them and analyse them together 
+
+data <- data %>%
+  mutate_at(
+    vars(one_of('sol_tech_alone'
+                )),
+    funs(case_when(
+      . == "1 - Strongly disagree" ~ 5,
+      . == "2 - Disagree" ~ 4,
+      . == "3 - Neither agree nor disagree" ~ 3,
+      . == "4 - Agree" ~ 2,
+      . == "5 - Strongly agree" ~ 1
+    )))
+
+##
+
+```
+
+#### variables with impact measure
+
+```{r}
+data <- data %>%
+  mutate_at(
+    vars(one_of('work', 'financial', 'transport', 'effectiveness', 'family', 'visa_residency', 'reputation', 'interest', 'unsure_actions',
+                'energy', 'covid', 'support'
+                )),
+    funs(case_when(
+      . == "1 - no impact" ~ 1,
+      . == "2 - small impact" ~ 2,
+      . == "3 - some impact" ~ 3,
+      . == "4 - significant impact" ~ 4,
+      . == "5 - very significant impact" ~ 5
+    )))
+
+
+```
+
+#### Political ideology measures
+
+
+```{r}
+data <- data %>%
+  mutate_at(
+    vars(starts_with('pol')),
+    funs(case_when(
+      . == "1 - left/liberal" ~ 1,
+      . == "2" ~ 2,
+      . == "3" ~ 3,
+      . == "4 - neutral" ~ 4,
+      . == "5" ~ 5,
+      . == "6" ~ 6,
+      . == "7 - right/conservative" ~ 7
+    )))
+
+```
+
+## Changing vector types 
+```{r}
+char_vars <- c('gender','ethnic_race',
+               'reside', 'from', 
+               'educ', 'academic_field', 'academic_field_16_TEXT', 'discipline')
+               
+
+data[, char_vars] <- lapply(data[, char_vars], factor)
+
+
+data <- data %>% mutate(across(i_s1:aos_h_6, as.numeric))
+data <- data %>% mutate(across(sol_beh:support, as.numeric))
+data$age <- as.numeric(data$age_2_TEXT)
+data$pol_soc <- as.numeric(data$pol_soc)
+data$pol_econ <- as.numeric(data$pol_econ)
+
+
+```
+## Adding score variables
+
+```{r}
+data <- data %>% dplyr::rowwise() %>% dplyr::mutate(
+  ident_scientist = sum(dplyr::c_across(i_s1:i_s8), na.rm = TRUE),
+  ident_activist = sum(dplyr::c_across(i_a1:i_a8), na.rm = TRUE),
+  activism = sum(dplyr::c_across(aos_l_1:aos_h_6), na.rm = TRUE),
+  activism_low = sum(dplyr::c_across(aos_l_1:aos_l_14), na.rm = TRUE),
+  activism_high = sum(dplyr::c_across(aos_h_1:aos_h_6), na.rm = TRUE),
+  barriers = sum(dplyr::c_across(work:support), na.rm = TRUE) - covid #control variable,
+  ) %>%
+  select(ident_scientist, ident_activist,
+         activism, activism_low, activism_high, barriers, 
+         everything())
+
+
+```
+
+# Descriptives
+
+```{r}
+data_summary <- data %>%
+  summarise(ident_scientist_mean = mean(data$ident_scientist, na.rm = TRUE),
+            ident_scientist_median = median(data$ident_scientist, na.rm = TRUE),
+            ident_scientist_sd = sd(data$ident_scientist, na.rm = TRUE),
+            ident_activist_mean = mean(data$ident_activist, na.rm = TRUE),
+            ident_activist_median = median(data$ident_activist, na.rm = TRUE),
+            ident_activist_sd = sd(data$ident_activist, na.rm = TRUE),
+            activism_mean = mean(data$activism, na.rm = TRUE),
+            activism_median = median(data$activism, na.rm = TRUE),
+            activism_sd = sd(data$activism, na.rm = TRUE),  
+            activism_low_mean = mean(data$activism_low, na.rm = TRUE),
+            activism_low_median = median(data$activism_low, na.rm = TRUE),
+            activism_low_sd = sd(data$activism_low, na.rm = TRUE),            
+            activism_high_mean = mean(data$activism_high, na.rm = TRUE),
+            activism_high_median = median(data$activism_high, na.rm = TRUE),
+            activism_high_sd = sd(data$activism_high, na.rm = TRUE),
+            barriers_mean = mean(data$barriers, na.rm = TRUE),
+            barriers_median = median(data$barriers, na.rm = TRUE),
+            barriers_sd = sd(data$barriers, na.rm = TRUE)
+  )
+          
+            
+data_summary <- data_summary[1,]  
+
+saveRDS(data_summary, "data_summary.rds")
+
+```
+## Graphing distributions
+
+### Environmental Activist Identity Scale
+
+```{r}
+graph_hist_enviro <- ggplot(data = data, 
+                         aes(x = ident_activist)) +
+  geom_histogram(binwidth = 2, colour = "black", fill = "blue") + 
+  scale_fill_manual(labels = c("Environmental Activist Identity"), 
+                   ) +
+  geom_vline(data = data_summary, aes(xintercept = ident_activist_mean),
+             linetype = "dashed", size = 1, colour = "black") +
+   geom_vline(data = data_summary, aes(xintercept = ident_activist_median),
+             linetype = "dashed", size = 1, colour = "darkblue") +
+  labs(title = "Environmentalist Identity Scores - All items", 
+       x = "Environmentalist Identity Score", y = "Participant Count",
+       caption = "black line = mean;dark blue = median")
+
+saveRDS(graph_hist_enviro, "graph_hist_enviro.rds")
+ggsave("graph_hist_enviro.jpg", graph_hist_enviro, height = 15, width = 20, limitsize = FALSE)
+
+
+qqPlot(data$ident_activist)
+
+
+skew_enviro <- skew(data$ident_activist)
+skew_enviro
+
+kurtosis_enviro <- kurtosi(data$ident_activist)
+kurtosis_enviro
+
+saveRDS(skew_enviro, "skew_enviro.rds")
+saveRDS(kurtosis_enviro, "kurtosis_enviro.rds")
+```
+
+### Scientist Activist Identity Scale
+
+```{r}
+graph_hist_scientist <- ggplot(data = data, 
+                         aes(x = ident_scientist)) +
+  geom_histogram(binwidth = 2, colour = "black", fill = "gray") + 
+  scale_fill_manual(labels = c("scientist Identity"), 
+                   ) +
+  geom_vline(data = data_summary, aes(xintercept = ident_scientist_mean),
+             linetype = "dashed", size = 1, colour = "black") +
+   geom_vline(data = data_summary, aes(xintercept = ident_scientist_median),
+             linetype = "dashed", size = 1, colour = "darkblue") +
+  labs(title = "Scientist Identity Scores - All items", 
+       x = "Scientist Identity Score", y = "Participant Count",
+       caption = "black line = mean;dark blue = median")
+
+saveRDS(graph_hist_scientist, "graph_hist_scientist.rds")
+ggsave("graph_hist_scientist.jpg", graph_hist_enviro, height = 15, width = 20, limitsize = FALSE)
+
+
+qqPlot(data$ident_scientist)
+
+
+skew_scientist <- skew(data$ident_scientist)
+skew_scientist
+
+kurtosis_scientist <- kurtosi(data$ident_scientist)
+kurtosis_scientist
+
+saveRDS(skew_scientist, "skew_scientist.rds")
+saveRDS(kurtosis_scientist, "kurtosis_scientist.rds")
+```
+
+### Activism Frequency Scale - all behaviours
+
+```{r}
+graph_hist_activism_all <- ggplot(data = data, 
+                         aes(x = activism)) +
+  geom_histogram(binwidth = 2, colour = "black", fill = "lightblue") + 
+  scale_fill_manual(labels = c("activism"), 
+                   ) +
+  geom_vline(data = data_summary, aes(xintercept = activism_mean),
+             linetype = "dashed", size = 1, colour = "black") +
+   geom_vline(data = data_summary, aes(xintercept = activism_median),
+             linetype = "dashed", size = 1, colour = "darkblue") +
+  labs(title = "Activism Frequency Scores - All items", 
+       x = "Activism Score", y = "Participant Count",
+       caption = "black line = mean;dark blue = median")
+
+saveRDS(graph_hist_activism_all, "graph_hist_activism_all.rds")
+ggsave("graph_hist_activism_all.jpg", graph_hist_activism_all, height = 15, width = 20, limitsize = FALSE)
+
+
+qqPlot(data$activism)
+
+skew_activism <- skew(data$activism)
+skew_activism
+
+kurtosis_activism <- kurtosi(data$activism)
+kurtosis_activism
+
+saveRDS(skew_activism, "skew_activism.rds")
+saveRDS(kurtosis_activism, "kurtosis_activism.rds")
+```
+
+
+### Activism Frequency Scale - low risk behaviours
+
+```{r}
+graph_hist_activism_low <- ggplot(data = data, 
+                         aes(x = activism_low)) +
+  geom_histogram(binwidth = 2, colour = "black", fill = "lightblue") + 
+  scale_fill_manual(labels = c("activism"), 
+                   ) +
+  geom_vline(data = data_summary, aes(xintercept = activism_low_mean),
+             linetype = "dashed", size = 1, colour = "black") +
+   geom_vline(data = data_summary, aes(xintercept = activism_low_median),
+             linetype = "dashed", size = 1, colour = "darkblue") +
+  labs(title = "Activism Frequency Scores - low risk items", 
+       x = "Activism Score", y = "Participant Count",
+       caption = "black line = mean;dark blue = median")
+
+saveRDS(graph_hist_activism_low, "graph_hist_activism_low.rds")
+ggsave("graph_hist_activism_low.jpg", graph_hist_activism_low, height = 15, width = 20, limitsize = FALSE)
+
+
+qqPlot(data$activism_low)
+
+skew_activism_low <- skew(data$activism_low)
+skew_activism_low
+
+kurtosis_activism_low <- kurtosi(data$activism_low)
+kurtosis_activism_low
+
+saveRDS(skew_activism_low, "skew_activism_low.rds")
+saveRDS(kurtosis_activism_low, "kurtosis_activism_low.rds")
+```
+
+### Activism Frequency Scale - high risk behaviours
+
+```{r}
+graph_hist_activism_high <- ggplot(data = data, 
+                         aes(x = activism_high)) +
+  geom_histogram(binwidth = 1, colour = "black", fill = "lightblue") + 
+  scale_fill_manual(labels = c("activism"), 
+                   ) +
+  geom_vline(data = data_summary, aes(xintercept = activism_high_mean),
+             linetype = "dashed", size = 1, colour = "black") +
+   geom_vline(data = data_summary, aes(xintercept = activism_high_median),
+             linetype = "dashed", size = 1, colour = "darkblue") +
+  labs(title = "Activism Frequency Scores - high risk items", 
+       x = "Activism Score", y = "Participant Count",
+       caption = "black line = mean;dark blue = median")
+
+saveRDS(graph_hist_activism_high, "graph_hist_activism_high.rds")
+ggsave("graph_hist_activism_high.jpg", graph_hist_activism_high, height = 15, width = 20, limitsize = FALSE)
+
+
+qqPlot(data$activism_high)
+
+skew_activism_high <- skew(data$activism_high)
+skew_activism_high
+
+kurtosis_activism_high <- kurtosi(data$activism_high)
+kurtosis_activism_high
+
+saveRDS(skew_activism_high, "skew_activism_high.rds")
+saveRDS(kurtosis_activism_high, "kurtosis_activism_high.rds")
+```
+## Separating out for low, medium and high activism
+
+
+```{r}
+
+
+data <- data %>% 
+  mutate(activism_class = case_when(activism <=  17 ~ 'low',
+                                    activism >=  39 ~ 'high',
+                                    TRUE ~ 'average'
+                                )
+  )
+
+data_high <- data %>%
+  filter(activism_class == "high")
+
+data_high_uk <- data_high %>%
+  filter(reside == "United Kingdom of Great Britain and Northern Ireland")
+
+data_email <- data %>%
+  filter(advert != "")
+
+data_email <- data_email %>%
+  select(advert, activism_high, activism_class, ident_scientist, ident_activist, reside, activism, activism_low, aos_h_1:aos_h_6, everything())
+
+write.csv(data_email,"data_email.csv", row.names = FALSE)
+```
+
+# Choosing participants for interview
+
+We want at least 25 participants for interview. We are interested in the following:
+
+1) those who take little action
+2) those who take some action
+3) those who take lots of action / specifically higher risk actions being weighted more heavily
+
+We are also interested in how scientist and activist identity relate to one another. Some will be fairly equal, others will be higher than the other. If we can further divide by this that would be great. 
+
+The mean activism for the overall sample, current number 176. 
+
+
+## Sample Descriptives
+
+```{r}
+
+mean(data$age, na.rm = TRUE)
+sd(data$age, na.rm = TRUE)
+
+sample_gender_female <- (sum(data$gender == "Female", na.rm = TRUE)/length(data$gender))*100
+
+sample_gender_male <- (sum(data$gender == "Male", na.rm = TRUE)/length(data$gender))*100
+
+sample_gender_female_count <- sum(data$gender == "Female", na.rm = TRUE)
+sample_gender_male_count <- sum(data$gender == "Male", na.rm = TRUE)
+sample_gender_non_binary_third_gender_count <- sum(data$gender == "Non-binary / third gender", na.rm = TRUE)
+sample_gender_self_describe_count <- sum(data$gender == "Prefer to self-describe", na.rm = TRUE)
+sample_gender_prefer_not_to_say_count <- sum(data$gender == "Prefer not to say", na.rm = TRUE)
+
+################################################################################
+
+
+```
+AS of Friday 20th of May the sample is as following. 176 participants have completed the survey in its entirety (M age = 39.23, SD = 12.28). The sample was 46.6% male, 44.89% female with 5 people identifying as non binary / third gender, 2 opting to self describe, and 2 preferring not to say. Mean identification with scientists was 42.03 (sd = 8.21, range 21 - 56) and mean identification with environmental activists was 37.60 (sd = 10.07, range 12 - 56). Average activism score i.e., frequency of participation in a range of activist behaviours was 28.39 (sd = 10.89, range 5 - 54 on a scale with a maximum of 60). 
+
+
+```{r}
+mean(data_email$age, na.rm = TRUE)
+sd(data_email$age, na.rm = TRUE)
+
+sample_email_gender_female <- (sum(data_email$gender == "Female", na.rm = TRUE)/length(data_email$gender))*100
+
+sample_email_gender_male <- (sum(data_email$gender == "Male", na.rm = TRUE)/length(data_email$gender))*100
+
+sample_email_gender_female_count <- sum(data_email$gender == "Female", na.rm = TRUE)
+sample_email_gender_male_count <- sum(data_email$gender == "Male", na.rm = TRUE)
+sample_email_gender_non_binary_third_gender_count <- sum(data_email$gender == "Non-binary / third gender", na.rm = TRUE)
+sample_email_gender_self_describe_count <- sum(data_email$gender == "Prefer to self-describe", na.rm = TRUE)
+sample_email_gender_prefer_not_to_say_count <- sum(data_email$gender == "Prefer not to say", na.rm = TRUE)
+
+
+data_email_summary <- data_email %>%
+  summarise(ident_scientist_mean = mean(data_email$ident_scientist, na.rm = TRUE),
+            ident_scientist_median = median(data_email$ident_scientist, na.rm = TRUE),
+            ident_scientist_sd = sd(data_email$ident_scientist, na.rm = TRUE),
+            ident_activist_mean = mean(data_email$ident_activist, na.rm = TRUE),
+            ident_activist_median = median(data_email$ident_activist, na.rm = TRUE),
+            ident_activist_sd = sd(data_email$ident_activist, na.rm = TRUE),
+            activism_mean = mean(data_email$activism, na.rm = TRUE),
+            activism_median = median(data_email$activism, na.rm = TRUE),
+            activism_sd = sd(data_email$activism, na.rm = TRUE),  
+            activism_low_mean = mean(data_email$activism_low, na.rm = TRUE),
+            activism_low_median = median(data_email$activism_low, na.rm = TRUE),
+            activism_low_sd = sd(data_email$activism_low, na.rm = TRUE),            
+            activism_high_mean = mean(data_email$activism_high, na.rm = TRUE),
+            activism_high_median = median(data_email$activism_high, na.rm = TRUE),
+            activism_high_sd = sd(data_email$activism_high, na.rm = TRUE),
+            barriers_mean = mean(data_email$barriers, na.rm = TRUE),
+            barriers_median = median(data_email$barriers, na.rm = TRUE),
+            barriers_sd = sd(data_email$barriers, na.rm = TRUE)
+  )
+          
+            
+data_email_summary <- data_email_summary[1,]  
+
+saveRDS(data_email_summary, "data_email_summary.rds")
+
+```
+
+56 participants elected to share their emails (M age = 40.08, sd = 13.21). The sample was 55.36% male, 39.29% female, 2 people identifying as non binary / third gender, and 1 person choosing not to share. Mean identification with scientists was 41.55 (sd = 8.06, range 23 - 55) and mean identification with environmental activists was 40.71 (sd = 8.55, range 21 - 56). Average activism score was 33.61 (sd = 10.42, range 10 - 54). Overall, this selection is comparable to the overall sample though identification with activists and frequency of activist behaviours is somewhat higher. 
+
+We will not subset this selection to get a spread of relative levels of activism (with a focus on those who do more high risk behaviours as a criteria for differentiation) and identification with scientists and with activists. 
+
+## Subsetting the selection by relative levels of activism
+
+First let's subset for participants who did not engage in any of the high risk behaviours. 
+```{r}
+data_email <- data_email %>%
+  mutate(some_high_risk = case_when(activism_high == 0 ~ 'none',
+                                    activism_high > 0 ~ 'some'))
+        
+data_email_no_high_risk <- data_email %>%
+  subset(some_high_risk == "none")
+
+data_email_some_high_risk <- data_email %>%
+  subset(some_high_risk == "some")
+```
+
+I am aiming for 30 people. 
+
+11 people. Let's sample 10 of them and we'll split them into there categories. Those . What is interesting when eyeballying the data is that there doesn't seem to be clean 
+
+Within that 3 p
+hmj.forrester@bristol.ac.uk identifies more as an activist but does not actually take much action. interesting. 
+ 
+meredithlairward@gmail.com, big difference between identities. 
+
+
+
+##Explore compatability of science and activism
+
+## Which appear to be negatively correlated. Reverse score those 
+
+```{r}
+
+test_score_df %>% 
+  mutate(test_grade = case_when(test_score_vector >= 90 ~ 'A'
+                                ,test_score_vector >= 80 ~ 'B'
+                                ,test_score_vector >= 70 ~ 'C'
+                                ,test_score_vector >= 60 ~ 'D'
+                                ,TRUE ~ 'F'
+                                )
+  )
+
+```
+https://www.sharpsightlabs.com/blog/case-when-r/#example-4
+
+
+
+# Taking qualtrics at face value for how it numbers things 
+```{r}
+library(readxl)
+data <- read_excel("C:/Users/finnerts/OneDrive - Lancaster University/Research/Research_projects/doctoral_projects/s3_activist_survey/data/s3_data_may_05.xlsx")
+
+data <- read_csv("C:/Users/finnerts/OneDrive - Lancaster University/Research/Research_projects/doctoral_projects/s3_activist_survey/s3_activist_survey_analysis/data/s3_2022_may_05.csv")
+
+
+
+
+```
+
+
+
+```{r}
+char_vars <- c('gender','ethnic_race',
+               'reside', 'from', 
+               'educ', 'academic_field', 'academic_field_16_TEXT', 'discipline')
+               
+
+data[, char_vars] <- lapply(data[, char_vars], factor)
+
+data <- data %>% mutate(across(i_s1:support, as.numeric))
+data$age <- as.numeric(data$age)
+data$pol_soc <- as.numeric(data$pol_soc)
+data$pol_econ <- as.numeric(data$pol_econ)
+
+set.seed(5)
+data <- data %>% dplyr::rowwise() %>% dplyr::mutate(
+  ident_scientist = sum(dplyr::c_across(i_s1:i_s8), na.rm = TRUE),
+  ident_activist = sum(dplyr::c_across(i_a1:i_a8), na.rm = TRUE),
+  compatability = sum(dplyr::c_across(objectivity:duty), na.rm = TRUE),
+  activism = sum(dplyr::c_across(aos_l_1:aos_h_6), na.rm = TRUE),
+  activism_low = sum(dplyr::c_across(aos_l_1:aos_l_14), na.rm = TRUE),
+  activism_high = sum(dplyr::c_across(aos_h_1:aos_h_6), na.rm = TRUE),
+  barriers = sum(dplyr::c_across(work:support), na.rm = TRUE),
+  ) %>%
+  select(ident_scientist, ident_activist, compatability,
+         activism, activism_low, activism_high, barriers, 
+         everything())
+
+
+
+
+```
+
+```{r}
+
+data_core <- data %>%
+  select(ident_scientist, ident_activist, compatability,
+         barriers, age, 
+         activism, activism_low,
+         activism_high, sol_beh, sol_pol, sol_tech, sol_tech_alone)
+
+data_core_select <- data_core %>%
+  select(ident_scientist, ident_activist,
+         compatability, barriers, activism)
+
+flattenCorrMatrix <- function(cormat, pmat) {
+  ut <- upper.tri(cormat)
+  data.frame(
+    row = rownames(cormat)[row(cormat)[ut]],
+    column = rownames(cormat)[col(cormat)[ut]],
+    cor  =(cormat)[ut],
+    p = pmat[ut]
+    )
+}
+
+corr_data_core <- rcorr(as.matrix(data_core))
+                       
+flattenCorrMatrix(corr_data_core$r, corr_data_core$P)
+
+
+corr_data_core_select <- rcorr(as.matrix(data_core_select))
+                       
+flattenCorrMatrix(corr_data_core_select$r, corr_data_core_select$P)
+
+corr_data_core_select <- as.matrix(corr_data_core_select)
+
+corrplot(data_core_select, type = "upper", order = "hclust", 
+         tl.col = "black", tl.srt = 45)
+
+```
+
+
+
+## separate out people who said they weren't really activists / weren't part of a group
+
+look at those who are not part of a group and those who are
+
+look at low versus high activist scores
+
+
+```{r}
+data_summary <- data %>%
+  summarise(ident_activist_mean = mean(data_scales_scores$ses_sum),
+            median_ses = median(data_scales_scores$ses_sum),
+            sd_ses = sd(data_scales_scores$ses_sum),
+            mean_ses_39 = mean(data_scales_scores$ses_sum_39),
+            median_ses_39 = median(data_scales_scores$ses_sum_39),
+            sd_ses_39 = median(data_scales_scores$ses_sum_39),
+            mean_ses_orig = mean(data_scales_scores$ses_sum_orig),
+            median_ses_orig = median(data_scales_scores$ses_sum_orig),
+            sd_ses_orig = median(data_scales_scores$ses_sum_orig),
+            mean_ses_new = mean(data_scales_scores$ses_sum_new),
+            median_ses_new = median(data_scales_scores$ses_sum_new),
+            sd_ses_new = median(data_scales_scores$ses_sum_new),
+            mean_mes = mean(data_scales_scores$mes_sum),
+            median_mes = median(data_scales_scores$mes_sum),
+            sd_mes = sd(data_scales_scores$mes_sum),
+            mean_mes_39 = mean(data_scales_scores$mes_sum_39),
+            median_mes_39 = median(data_scales_scores$mes_sum_39),
+            sd_mes_39 = median(data_scales_scores$mes_sum_39),
+            mean_mes_orig = mean(data_scales_scores$mes_sum_orig),
+            median_mes_orig = median(data_scales_scores$mes_sum_orig),
+            sd_mes_orig = sd(data_scales_scores$mes_sum_orig),
+            mean_mes_new = mean(data_scales_scores$mes_sum_new),
+            median_mes_new = median(data_scales_scores$mes_sum_new),
+            sd_mes_new = sd(data_scales_scores$mes_sum_new),
+            mean_aos = mean(data_scales_scores$aos_sum), 
+            median_aos = median(data_scales_scores$aos_sum),
+            sd_aos = sd(data_scales_scores$aos_sum),
+            mean_enviro = mean(data_scales_scores$enviro_sum),
+            median_enviro = median(data_scales_scores$enviro_sum),
+            sd_enviro = sd(data_scales_scores$enviro_sum)
+      )
+
+  
+data_summary <- data_summary[1,]  
+
+saveRDS(data_summary, "data_summary.rds")
+
+```
+
+```{r}
+
+mean(data$ident_scientist)
+mean(data$ident_activist)
+cor(data$ident_scientist, data$ident_activist)
+cor(data$ident_scientist, data$activism, method = "spearman ")
+cor(data$ident_activist, data$activism)
+cor(data$compatability, data$activism)
+cor(data$compatability, data$activism_low)
+cor(data$compatability, data$activism_high)
+cor(data$barriers, data$activism)
+
+cor(data$ident_scientist, data$sol_beh)
+cor(data$ident_scientist, data$sol_pol)
+cor(data$ident_scientist, data$sol_tech)
+cor(data$ident_scientist, data$sol_tech_alone)
+
+
+cor(data$ident_activist, data$sol_beh)
+cor(data$ident_activist, data$sol_pol)
+cor(data$ident_activist, data$sol_tech)
+cor(data$ident_activist, data$sol_tech_alone)
+
+
+
+```
+```{r}
+lm_1 <- lm(activism ~ ident_activist + ident_scientist +
+             barriers + compatability + impact_self + impact_close + age, 
+           data = data)
+  
+lm_1_summary <- summary(lm_1)
+lm_1_summary
+
+
+lm_1_low <- lm(activism_low ~ ident_activist + ident_scientist +
+             barriers + compatability + impact_self + impact_close + age, 
+           data = data)
+  
+lm_1_low_summary <- summary(lm_1_low)
+lm_1_low_summary
+  
+
+
+```
+
+```{r}
+pwr.f2.test(u = 6, v = 149,# sample size - u + 1
+            f2 = NULL, sig.level = .05, power = .8)
+
+## Correlations include age so we have changed n = 327 to reflect that 3 participants did not include their age 
+pwr.r.test(n = 327, r = , sig.level = .05, power = .8, alternative = "two.sided")
+
+# study correlation effect sizes
+
+pwr.r.test(n = 216, r = , sig.level = .05, power = .8, alternative = "two.sided")
+
+```
+
+# Changing the text options manually to numeric values 
+
+https://www.statology.org/r-replace-values-in-data-frame-conditionally/
+
+might need to first change the class of the objects 
+
+```{r}
+
+data <- data %>% mutate(across(i_s1:i_a8, as.character()))
+data <- data %>% mutate(across(enviro_1:age, as.numeric))
+
+data$i_s1[data$i_s1 == "Disagree"] <- 3
+
+data[data == "Disagree"] <- 5
+
+data$i_s2[data$i_s2 == "Strongly Disagree"] <- 5
+
+data[data == "0. Never do this"] <- 0
+
+
+  if(item == "Strongly Disagree") {item <- 1}
+  if(item == "Disagree") {item <- 2}
+  if(item == "Somewhat Disagree") {item <- 3}
+  if(item == "Neither Agree nor Disagree") {item <- 4}
+  if(item == "Somewhat Agree") {item <- 5}
+  if(item == "Agree") {item <- 6}
+  if(item == "Strongly Agree") {item <- 7}
+
+```
+
+```{r}
+data <- replace(data$i_s1:data$i_a8, data$i_s1:data$i_a8 == "Strongly Disagree", 1)
+
+data$i_s1:data$i_a8[data$i_s1:data$i_a8 == "Strongly Disagree"] <- 1
+
+```
+
+```{r}
+
+convert_likert_to_num <- function(for (i in item) {
+  if(item == "Strongly Disagree") {item <- 1}
+  if(item == "Disagree") {item <- 2}
+  if(item == "Somewhat Disagree") {item <- 3}
+  if(item == "Neither Agree nor Disagree") {item <- 4}
+  if(item == "Somewhat Agree") {item <- 5}
+  if(item == "Agree") {item <- 6}
+  if(item == "Strongly Agree") {item <- 7}
+
+} ) 
+
+  
+  
+  
+for (i in data) {
+  if(item == "Strongly Disagree") {item <- 1}
+  if(item == "Disagree") {item <- 2}
+  if(item == "Somewhat Disagree") {item <- 3}
+  if(item == "Neither Agree nor Disagree") {item <- 4}
+  if(item == "Somewhat Agree") {item <- 5}
+  if(item == "Agree") {item <- 6}
+  if(item == "Strongly Agree") {item <- 7}
+
+} ) 
+  
+  
+x <- convert_likert_to_num(data$i_s1)
+
+data$gender[data$gender_text == "female"] <- "Female"
+```
+
+## R Markdown
+
+This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+
+```{r cars}
+summary(cars)
+```
+
+## Including Plots
+
+You can also embed plots, for example:
+
+```{r pressure, echo=FALSE}
+plot(pressure)
+```
+
+Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
